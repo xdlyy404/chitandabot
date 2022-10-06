@@ -82,7 +82,7 @@ async function gblk() {
             printQRInTerminal: true,
             logger: logg({ level: 'fatal' }),
             auth: state,
-            browser: ["Chitanda Eru Multi Device", "Safari", "3.0"]
+            browser: ["Chitanda Eru Multi Device", "Safari", "3.0"],
             getMessage: async key => {
                 return {
 
