@@ -13,7 +13,7 @@ const {
 	DisconnectReason,
 	AnyMessageContent,
         makeInMemoryStore,
-	useSingleFileAuthState,
+	useMultiFileAuthState,
 	delay
 } = require("@adiwajshing/baileys")
 const figlet = require("figlet");
@@ -27,8 +27,7 @@ const { serialize } = require("./lib/myfunc");
 const { color, mylog, infolog } = require("./lib/color");
 const time = moment(new Date()).format('HH:mm:ss DD/MM/YYYY')
 let setting = JSON.parse(fs.readFileSync('./config.json'));
-let session = `./${setting.sessionName}.json`
-const { state, saveState } = useSingleFileAuthState(session)
+let session = `./${setting.sessionName}`
 let welcome = JSON.parse(fs.readFileSync('./database/welcome.json'));
 
 function title() {
@@ -76,12 +75,19 @@ const reconnect = new Spinner(chalk.redBright(` Reconnecting WhatsApp Bot`))
 
 const store = makeInMemoryStore({ logger: logg().child({ level: 'fatal', stream: 'store' }) })
 
-const connectToWhatsApp = async () => {
+async function gblk() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
+    const connectToWhatsApp = async () => {
 	const conn = makeWASocket({
             printQRInTerminal: true,
             logger: logg({ level: 'fatal' }),
             auth: state,
             browser: ["Chitanda Eru Multi Device", "Safari", "3.0"]
+            getMessage: async key => {
+                return {
+
+                }
+            }
         })
 	title()
         store.bind(conn.ev)
@@ -105,18 +111,15 @@ const connectToWhatsApp = async () => {
 		require('./message/msg')(conn, msg, m, setting, store, welcome)
 	})
 	conn.ev.on('connection.update', (update) => {
-		const { connection, lastDisconnect } = update
-		if (connection === 'close') {
-			status.stop()
-			reconnect.stop()
-			starting.stop()
-			console.log(mylog('Server Ready ✓'))
-			lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut 
-			? connectToWhatsApp()
-			: console.log(mylog('Wa web terlogout...'))
-		}
+            if (global.qr !== update.qr) {
+                global.qr = update.qr
+            }
+            const { connection, lastDisconnect } = update
+            if (connection === 'close') {
+                lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut ? connectToWhatsApp() : console.log('connection logged out...')
+            }
 	})
-	conn.ev.on('creds.update', () => saveState)
+	conn.ev.on('creds.update', await saveCreds)
 	
         conn.ev.on('group-participants.update', async (data) => {
           const isWelcome = welcome.includes(data.id) ? true : false
@@ -143,7 +146,10 @@ const connectToWhatsApp = async () => {
 	conn.reply = (from, content, msg) => conn.sendMessage(from, { text: content }, { quoted: msg })
 
 	return conn
+    }
+
+    connectToWhatsApp()
+    .catch(err => console.log(err))
 }
 
-connectToWhatsApp()
-.catch(err => console.log(err))
+gblk()
