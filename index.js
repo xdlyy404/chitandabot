@@ -119,7 +119,6 @@ async function gblk() {
                 lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut ? connectToWhatsApp() : console.log('connection logged out...')
             }
 	})
-	conn.ev.on('creds.update', await saveCreds)
 	
         conn.ev.on('group-participants.update', async (data) => {
           const isWelcome = welcome.includes(data.id) ? true : false
@@ -142,6 +141,8 @@ async function gblk() {
             }
           }
         })
+
+        conn.ev.on('creds.update', await saveCreds)
 
 	conn.reply = (from, content, msg) => conn.sendMessage(from, { text: content }, { quoted: msg })
 
